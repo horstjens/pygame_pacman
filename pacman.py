@@ -735,6 +735,14 @@ class Viewer:
                         running = False
                     if event.key == pygame.K_SPACE:
                         pass
+                    if event.key == pygame.K_UP:
+                        self.player1.pos.y -= Viewer.cell_height
+                    if event.key == pygame.K_DOWN:
+                        self.player1.pos.y += Viewer.cell_height
+                    if event.key == pygame.K_LEFT:
+                        self.player1.pos.x -= Viewer.cell_width
+                    if event.key == pygame.K_RIGHT:
+                        self.player1.pos.x += Viewer.cell_width
 
             # ------------ pressed keys ------
             pressed_keys = pygame.key.get_pressed()
