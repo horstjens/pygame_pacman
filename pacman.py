@@ -736,13 +736,22 @@ class Viewer:
                     if event.key == pygame.K_SPACE:
                         pass
                     if event.key == pygame.K_UP:
-                        self.player1.pos.y -= Viewer.cell_height
+                        # check if north of player is free
+                        if Game.cells[self.player1.y-1][self.player1.x] == 0:
+                            self.player1.y -= 1
+                            self.player1.pos.y -= Viewer.cell_height
                     if event.key == pygame.K_DOWN:
-                        self.player1.pos.y += Viewer.cell_height
+                        if Game.cells[self.player1.y+1][self.player1.x] == 0:
+                            self.player1.y += 1
+                            self.player1.pos.y += Viewer.cell_height
                     if event.key == pygame.K_LEFT:
-                        self.player1.pos.x -= Viewer.cell_width
+                        if Game.cells[self.player1.y][self.player1.x-1] == 0:
+                            self.player1.x -= 1
+                            self.player1.pos.x -= Viewer.cell_width
                     if event.key == pygame.K_RIGHT:
-                        self.player1.pos.x += Viewer.cell_width
+                        if Game.cells[self.player1.y][self.player1.x+1] == 0:
+                            self.player1.x += 1
+                            self.player1.pos.x += Viewer.cell_width
 
             # ------------ pressed keys ------
             pressed_keys = pygame.key.get_pressed()
