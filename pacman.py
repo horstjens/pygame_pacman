@@ -1,8 +1,8 @@
 """
 pac man
 
-author: Horst JENS
-email: horstjens@gmail.com
+authors: Horst JENS, Simon HEPPNER, Max KOBER
+email: horstjens@gmail.com, simon@heppner.at
 contact: see http://spielend-programmieren.at/de:kontakt
 license: gpl, see http://www.gnu.org/licenses/gpl-3.0.de.html
 part of http://ThePythonGamebook.com
