@@ -558,17 +558,16 @@ class Smoke(VectorSprite):
         self.image.convert_alpha()
 
 
-class Pill(VectorSprite):
-    pass
-
-class SuperPill(VectorSprite):
-    pass
-
 class Monster(VectorSprite):
 
     def _overwrite_parameters(self):
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width//2, self.y * Viewer.cell_height+Viewer.cell_height//2)
 
+class Pill(Monster):
+    pass
+
+class SuperPill(Monster):
+    pass
 
 class Player(Monster):
     pass
@@ -594,7 +593,6 @@ class Game:
         [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1],
         [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ]
     points = 0
 
@@ -660,6 +658,7 @@ class Viewer:
         self.run()
 
     def load_images(self):
+        # ----- PACMAN -----
         pic = pygame.image.load(os.path.join("data", "pacman1.png"))
         pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
         pic.convert_alpha()
@@ -668,7 +667,11 @@ class Viewer:
         Viewer.images["player3"] = pygame.transform.rotate(pic, 180)   # west
         Viewer.images["player4"] = pygame.transform.rotate(pic, 270)   # south
 
-
+        # ------ PILL -----
+        pic = pygame.image.load(os.path.join("data", "point_small.png"))
+        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
+        pic.convert_alpha()
+        Viewer.images["pill"] = pic
 
 
 
@@ -699,6 +702,10 @@ class Viewer:
         VectorSprite.groups = self.allgroup
 
         self.player1 = Player(x=1, y=1, picture = Viewer.images["player1"])
+        for y, line in enumerate(Game.cells):
+            for x, char in enumerate(line):
+                if char == 0:
+                    Pill(x=x, y=y, picture = Viewer.images["pill"])
 
         Player.groups = self.allgroup, self.playergroup
         # Flytext.groups = self.allgroup, self.flytextgroup, self.flygroup
