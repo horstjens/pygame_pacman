@@ -663,7 +663,10 @@ class Viewer:
         pic = pygame.image.load(os.path.join("data", "pacman1.png"))
         pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
         pic.convert_alpha()
-        Viewer.images["player1"] = pic
+        Viewer.images["player1"] = pic                                 # east
+        Viewer.images["player2"] = pygame.transform.rotate(pic, 90)    # north
+        Viewer.images["player3"] = pygame.transform.rotate(pic, 180)   # west
+        Viewer.images["player4"] = pygame.transform.rotate(pic, 270)   # south
 
 
 
@@ -740,18 +743,22 @@ class Viewer:
                         if Game.cells[self.player1.y-1][self.player1.x] == 0:
                             self.player1.y -= 1
                             self.player1.pos.y -= Viewer.cell_height
+                            self.player1.image = Viewer.images["player2"]
                     if event.key == pygame.K_DOWN:
                         if Game.cells[self.player1.y+1][self.player1.x] == 0:
                             self.player1.y += 1
                             self.player1.pos.y += Viewer.cell_height
+                            self.player1.image = Viewer.images["player4"]
                     if event.key == pygame.K_LEFT:
                         if Game.cells[self.player1.y][self.player1.x-1] == 0:
                             self.player1.x -= 1
                             self.player1.pos.x -= Viewer.cell_width
+                            self.player1.image = Viewer.images["player3"]
                     if event.key == pygame.K_RIGHT:
                         if Game.cells[self.player1.y][self.player1.x+1] == 0:
                             self.player1.x += 1
                             self.player1.pos.x += Viewer.cell_width
+                            self.player1.image = Viewer.images["player1"]
 
             # ------------ pressed keys ------
             pressed_keys = pygame.key.get_pressed()
