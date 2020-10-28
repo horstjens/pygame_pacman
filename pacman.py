@@ -562,23 +562,26 @@ class Smoke(VectorSprite):
         self.image.convert_alpha()
 
 
-
-
-class SuperPill(VectorSprite):
-    pass
-
 class Monster(VectorSprite):
 
     def _overwrite_parameters(self):
         self._layer=7
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width//2, self.y * Viewer.cell_height+Viewer.cell_height//2)
+        self._layer = 2
 
 class Pill(VectorSprite):
+
     def _overwrite_parameters(self):
-        self._layer=5
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width // 2,
                                        self.y * Viewer.cell_height + Viewer.cell_height // 2)
+        self._layer=1
 
+class SuperPill(VectorSprite):
+
+    def _overwrite_parameters(self):
+        self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width // 2,
+                                       self.y * Viewer.cell_height + Viewer.cell_height // 2)
+        self._layer=1
 
 
 class Player(Monster):
@@ -721,6 +724,7 @@ class Viewer:
 
     def load_images(self):
         # --- pacman ----
+        # ----- PACMAN -----
         pic = pygame.image.load(os.path.join("data", "pacman1.png"))
         pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
         pic.convert_alpha()
