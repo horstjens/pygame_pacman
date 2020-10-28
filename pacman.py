@@ -24,6 +24,7 @@ class VectorSprite(pygame.sprite.Sprite):
     """base class for sprites. this class inherits from pygame sprite class"""
 
     number = 0  # unique number for each sprite
+    images = []
 
     # numbers = {} # { number, Sprite }
 
@@ -52,7 +53,9 @@ class VectorSprite(pygame.sprite.Sprite):
                  boss = None,
                  #kill_with_boss = False,
                  move_with_boss = False,
-                 area = None, # pygame.Rect
+                 area = None, # pygame.Rect,
+                 animations_per_second = None,
+                 animation_index = 0,
                  **kwargs):
         #self._default_parameters(**kwargs)
         _locals = locals().copy() # copy locals() so that it does not updates itself
@@ -65,6 +68,7 @@ class VectorSprite(pygame.sprite.Sprite):
             self.pos = pygame.math.Vector2(200,200)
         if move is None:
             self.move = pygame.math.Vector2(0,0)
+        self.animation_time_passed = 0
         self._overwrite_parameters()
         pygame.sprite.Sprite.__init__(
             self, self.groups
@@ -83,63 +87,6 @@ class VectorSprite(pygame.sprite.Sprite):
         """change parameters before create_image is called"""
         pass
 
-    def _default_parameters(self, **kwargs):
-        """get unlimited named arguments and turn them into attributes
-        default values for missing keywords"""
-
-        for key, arg in kwargs.items():
-            setattr(self, key, arg)
-        if "layer" not in kwargs:
-            self.layer = 0
-        # else:
-        #    self.layer = self.layer
-        if "pos" not in kwargs:
-            self.pos = pygame.math.Vector2(200, 200)
-        if "move" not in kwargs:
-            self.move = pygame.math.Vector2(0, 0)
-        if "angle" not in kwargs:
-            self.angle = 0  # facing right?
-        if "radius" not in kwargs:
-            self.radius = 5
-        # if "width" not in kwargs:
-        #    self.width = self.radius * 2
-        # if "height" not in kwargs:
-        #    self.height = self.radius * 2
-        if "color" not in kwargs:
-            # self.color = None
-            self.color = (
-                random.randint(0, 255),
-                random.randint(0, 255),
-                random.randint(0, 255),
-            )
-        if "hitpoints" not in kwargs:
-            self.hitpoints = 100
-        self.hitpointsfull = self.hitpoints  # makes a copy
-
-        if "stop_on_edge" not in kwargs:
-            self.stop_on_edge = False
-        if "bounce_on_edge" not in kwargs:
-            self.bounce_on_edge = False
-        if "kill_on_edge" not in kwargs:
-            self.kill_on_edge = False
-        if "warp_on_edge" not in kwargs:
-            self.warp_on_edge = False
-        if "age" not in kwargs:
-            self.age = 0  # age in seconds. A negative age means waiting time until sprite appears
-        if "max_age" not in kwargs:
-            self.max_age = None
-
-        if "max_distance" not in kwargs:
-            self.max_distance = None
-        if "picture" not in kwargs:
-            self.picture = None
-        if "boss" not in kwargs:
-            self.boss = None
-        if "kill_with_boss" not in kwargs:
-            self.kill_with_boss = False
-        if "move_with_boss" not in kwargs:
-            self.move_with_boss = False
-
 
     def kill(self):
         # check if this is a boss and kill all his underlings as well
@@ -156,6 +103,8 @@ class VectorSprite(pygame.sprite.Sprite):
     def create_image(self):
         if self.picture is not None:
             self.image = self.picture.copy()
+        elif self.animations_per_second is not None:
+            self.image = self.images[self.animation_index]
         else:
             self.image = pygame.Surface((self.width, self.height))
             self.image.fill(self.color)
@@ -196,6 +145,15 @@ class VectorSprite(pygame.sprite.Sprite):
         self.age += seconds
         if self.age < 0:
             return
+        if self.animations_per_second is not None:
+            self.animation_time_passed += seconds
+            if self.animation_time_passed > 1 / self.animations_per_second:
+                self.animation_time_passed = 0
+                self.animation_index += 1
+                if self.animation_index == len(self.images):
+                    self.animation_index = 0
+                self.image = self.images[self.animation_index]
+
         # self.visible = True
         self.distance_traveled += self.move.length() * seconds
         # ----- kill because... ------
@@ -585,7 +543,11 @@ class SuperPill(VectorSprite):
 
 
 class Player(Monster):
-    pass
+    def _overwrite_parameters(self):
+        self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width//2, self.y * Viewer.cell_height+Viewer.cell_height//2)
+        self._layer = 2
+        self.animations_per_second = 5
+
 
 class Ghost(Monster):
 
@@ -598,9 +560,11 @@ class Ghost(Monster):
                "east":"west",
                "south":"north",
                "west":"east"}
+
     def _overwrite_parameters(self):
         #self.nesw = [False, False, False, False] # direction to go: north, east, south, west
         self.direction = random.choice(tuple(self.nesw.keys()))
+        self.animations_per_second = 4
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width // 2,
                                        self.y * Viewer.cell_height + Viewer.cell_height // 2)
 
@@ -609,7 +573,7 @@ class Ghost(Monster):
         self.options = []
         for direction in self.nesw.keys():
             dx, dy = self.nesw[direction][0], self.nesw[direction][1]
-            if Game.cells[self.y+dy][self.x+dx] != 1: # wall
+            if Game.cells[self.y+dy][self.x+dx] != 1 : # not a wall
                 for other in [m for m in Viewer.ghostgroup if m.number != self.number]:
                     if other.x == self.x +dx and other.y == self.y + dy:
                         break
@@ -669,6 +633,19 @@ class Viewer:
     cell_width = 0
     cell_height = 0
     images = {}
+    # --- player images ---
+    images_east = []
+    images_west = []
+    images_south = []
+    images_north = []
+    # --- ghost images ---
+    images_blue = []
+    images_green = []
+    images_neon = []
+    images_orange = []
+    images_pink = []
+    images_red = []
+
 
     # playergroup = None # pygame sprite Group only for players
 
@@ -718,40 +695,34 @@ class Viewer:
         # self.make_background()
         self.load_images()
 
-        self.prepare_sprites()
+
         self.setup()
         self.run()
 
     def load_images(self):
         # --- pacman ----
         # ----- PACMAN -----
-        pic = pygame.image.load(os.path.join("data", "pacman1.png"))
-        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
-        pic.convert_alpha()
-        Viewer.images["player1"] = pic                                 # east
-        Viewer.images["player2"] = pygame.transform.rotate(pic, 90)    # north
-        Viewer.images["player3"] = pygame.transform.rotate(pic, 180)   # west
-        Viewer.images["player4"] = pygame.transform.rotate(pic, 270)   # south
-        # ghost
-        pic = pygame.image.load(os.path.join("data", "blue_ghost1.png"))
-        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
-        pic.convert_alpha()
-        Viewer.images["ghost1"] = pic
-        # ghost
-        pic = pygame.image.load(os.path.join("data", "red_ghost1.png"))
-        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
-        pic.convert_alpha()
-        Viewer.images["ghost2"] = pic
-        # ghost
-        pic = pygame.image.load(os.path.join("data", "neon_ghost1.png"))
-        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
-        pic.convert_alpha()
-        Viewer.images["ghost3"] = pic
-        # ghost
-        pic = pygame.image.load(os.path.join("data", "pink_ghost1.png"))
-        pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
-        pic.convert_alpha()
-        Viewer.images["ghost4"] = pic
+        # 5 pacman-pictures, heading east
+        for number in range(1,6):
+            pic = pygame.image.load(os.path.join("data", f"pacman{number}.png"))
+            pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
+            pic.convert_alpha()
+            Viewer.images_east.append(pic)
+        # copy for 3 other cardinal directions
+        Player.images = Viewer.images_east[:]
+        angles = (-90,-180,-270)
+        containers = (Viewer.images_south, Viewer.images_west, Viewer.images_north)
+        for i in (0,1,2):
+            for pic in Viewer.images_east:
+                containers[i].append(pygame.transform.rotate(pic, angles[i]))
+        # ----ghost----
+        colors = ("blue", "green", "neon", "orange", "pink", "red")
+        for i in range(len(colors)):
+            for number in range(1,5):
+                pic = pygame.image.load(os.path.join("data", f"{colors[i]}_ghost{number}.png"))
+                pic = pygame.transform.scale(pic, (Viewer.cell_width, Viewer.cell_height))
+                pic.convert_alpha()
+                Viewer.__dict__[f"images_{colors[i]}"].append(pic)
 
         # --- pill ---
         pic = pygame.image.load(os.path.join("data", "point_small.png"))
@@ -777,6 +748,7 @@ class Viewer:
             for x, char in enumerate(line):
                 if char == 1:
                     pygame.draw.rect(self.background, (0,0,128), (x * Viewer.cell_width, y * Viewer.cell_height, Viewer.cell_width, Viewer.cell_height) )
+        self.prepare_sprites()
 
 
 
@@ -799,13 +771,22 @@ class Viewer:
             for x, char in enumerate(line):
                 if char == 0:
                     Pill(x=x, y=y, picture=Viewer.images["pill"])
-                if char == 2:
-                    self.player1 = Player(x=x, y=x, picture=Viewer.images["player1"])
-                if char == 3:
+                elif char == 2:
+                    self.player1 = Player(x=x, y=x )
+                elif char == 3:
                     pass # nothing
-                if char >= 4 and char <= 7:
-                    Ghost(x=x, y=y, picture=Viewer.images["ghost"+str(char-3)])
+                # --- ghosts ---
+                elif char == 4:
+                    Ghost(x=x, y=y, animation_index = 0, images=Viewer.images_red)
+                elif char == 5:
+                    Ghost(x=x, y=y, animation_index = 1, images=Viewer.images_green)
+                elif char == 6:
+                    Ghost(x=x, y=y, animation_index = 2, images=Viewer.images_orange)
+                elif char == 7:
+                    Ghost(x=x, y=y, animation_index = 3, images=Viewer.images_pink)
 
+
+                    images_red = []
 
 
         # Flytext.groups = self.allgroup, self.flytextgroup, self.flygroup
@@ -819,23 +800,58 @@ class Viewer:
     def check_player_ghost_collision(self):
         # ----- player vs. ghost:
         for player in self.playergroup:
-            crashgroup = pygame.sprite.spritecollide(player, self.ghostgroup, False, pygame.sprite.collide_rect)
-            for ghost in crashgroup:
-                Game.lives -= 1
-                if Game.lives == 0:
-                    Flytext(pos=pygame.math.Vector2(self.width // 2, self.height // 2),
-                            text="Game over",
+            #crashgroup = pygame.sprite.spritecollide(player, self.ghostgroup, False, pygame.sprite.collide_rect)
+            for ghost in self.ghostgroup:
+                if player.x == ghost.x and player.y == ghost.y:
+                    Game.lives -= 1
+                    Flytext(pos=pygame.math.Vector2(player.pos.x, player.pos.y),
+                            text="you lost a life!",
                             color=(200, 0, 0),
                             max_age=10,
-                            fontsize=64)
-                    # self.setup()
-                # break
-                return
+                            fontsize=22)
+                    if Game.lives == 0:
+                        Flytext(pos=pygame.math.Vector2(self.width // 2, self.height // 2),
+                                text="Game over",
+                                color=(200, 0, 0),
+                                max_age=10,
+                                fontsize=64)
+                        # self.setup()
+                    # break
+                    return # only substract one life at max.
+
+    def debug_positions(self):
+        print("player:", self.player1.x, self.player1.y)
+        for monster in self.ghostgroup:
+            print("ghost ", monster.number, "x", monster.x, "y", monster.y)
 
     def move_monsters(self):
+        print("---before first check ----")
+        #self.debug_positions()
         self.check_player_ghost_collision()
+        print("---move monsters ---")
         for monster in self.ghostgroup:
             monster.move_nesw()
+        self.check_player_ghost_collision()
+        #self.debug_positions()
+
+    def move_player(self, dx, dy):
+        print("cell to go:", Game.cells[self.player1.y + dy][self.player1.x+dx])
+        if Game.cells[self.player1.y + dy][self.player1.x+dx] in (0,2):
+            self.player1.x += dx
+            self.player1.y += dy
+            self.player1.pos.x += Viewer.cell_width * dx
+            self.player1.pos.y += Viewer.cell_height * dy
+            # Player images
+            if dx == 0 and dy == -1:
+                Player.images = Viewer.images_north[:]
+            elif dx == 0 and dy == 1:
+                Player.images = Viewer.images_south[:]
+            elif dx == 1 and dy == 0:
+                Player.images = Viewer.images_east[:]
+            elif dx == -1 and dy == 0:
+                Player.images = Viewer.images_west[:]
+            # move monsters
+            self.move_monsters()
 
     def run(self):
         """The mainloop"""
@@ -855,6 +871,11 @@ class Viewer:
             milliseconds = self.clock.tick(self.fps)  #
             seconds = milliseconds / 1000
             self.playtime += seconds
+
+            # ---------- clear all --------------
+            # pygame.display.set_caption(f"player 1: {self.player1.deaths}   vs. player 2: {self.player2.deaths}")     #str(nesw))
+            self.screen.blit(self.background, (0, 0))
+
             # -------- events ------
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -867,36 +888,21 @@ class Viewer:
                         self.move_monsters() # player does nothing, but monsters move
                     if event.key == pygame.K_UP:
                         # check if north of player is free
-                        if Game.cells[self.player1.y-1][self.player1.x] == 0:
-                            self.player1.y -= 1
-                            self.player1.pos.y -= Viewer.cell_height
-                            self.player1.image = Viewer.images["player2"]
-                            self.move_monsters()
+                        self.move_player(0, -1)
+
                     if event.key == pygame.K_DOWN:
-                        if Game.cells[self.player1.y+1][self.player1.x] == 0:
-                            self.player1.y += 1
-                            self.player1.pos.y += Viewer.cell_height
-                            self.player1.image = Viewer.images["player4"]
-                            self.move_monsters()
+                        self.move_player(0,1)
+
                     if event.key == pygame.K_LEFT:
-                        if Game.cells[self.player1.y][self.player1.x-1] == 0:
-                            self.player1.x -= 1
-                            self.player1.pos.x -= Viewer.cell_width
-                            self.player1.image = Viewer.images["player3"]
-                            self.move_monsters()
+                        self.move_player(-1,0)
+
                     if event.key == pygame.K_RIGHT:
-                        if Game.cells[self.player1.y][self.player1.x+1] == 0:
-                            self.player1.x += 1
-                            self.player1.pos.x += Viewer.cell_width
-                            self.player1.image = Viewer.images["player1"]
-                            self.move_monsters()
+                        self.move_player(1,0)
+
 
             # ------------ pressed keys ------
             pressed_keys = pygame.key.get_pressed()
 
-            # ---------- clear all --------------
-            # pygame.display.set_caption(f"player 1: {self.player1.deaths}   vs. player 2: {self.player2.deaths}")     #str(nesw))
-            self.screen.blit(self.background, (0, 0))
 
 
 
@@ -929,7 +935,7 @@ class Viewer:
                               acceleration=0.95,
                               )
 
-
+            #self.check_player_ghost_collision()
 
             # ----------- writing on screen ----------
 
