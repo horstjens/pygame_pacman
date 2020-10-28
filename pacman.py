@@ -16,12 +16,9 @@ import random
 import os
 
 
-# import os
-# import sys
-
-
 class VectorSprite(pygame.sprite.Sprite):
-    """base class for sprites. this class inherits from pygame sprite class"""
+    """base class for sprites. this class inherits from pygame sprite class
+    """
 
     number = 0  # unique number for each sprite
     images = []
@@ -91,9 +88,6 @@ class VectorSprite(pygame.sprite.Sprite):
     def kill(self):
         # check if this is a boss and kill all his underlings as well
         tokill = [s for s in Viewer.allgroup if "boss" in s.__dict__ and s.boss == self]
-        #for s in Viewer.allgroup:
-        #    if "boss" in s.__dict__ and s.boss == self:
-        #        tokill.append(s)
         for s in tokill:
             s.kill()
         # if self.number in self.numbers:
@@ -432,7 +426,7 @@ class Hitpointbar(VectorSprite):
 
 
 
-class Spark2(VectorSprite):
+class Spark(VectorSprite):
 
     def _overwrite_parameters(self):
         self._layer = 9
@@ -448,28 +442,6 @@ class Spark2(VectorSprite):
         self.image.set_colorkey((0, 0, 0))
         self.rect = self.image.get_rect()
         self.image0 = self.image.copy()
-
-
-class Spark(VectorSprite):
-    width = 10
-    height = 1
-    acc = 1.01
-    _layer = 10
-
-    def create_image(self):
-        self.image = pygame.Surface((10, 3))
-        pygame.draw.line(self.image, self.color, (0, 1), (10, 1))
-        self.image.set_colorkey((0, 0, 0))
-        # self.image.fill(randomize_colors(self.color, 20))
-        self.image.convert_alpha()
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos.x, self.pos.y
-        self.image0 = self.image.copy()
-        self.set_angle(self.angle)
-
-    def update(self, seconds):
-        self.move *= self.acc
-        super().update(seconds)
 
 
 class Smoke(VectorSprite):
@@ -600,15 +572,10 @@ class Ghost(Monster):
 
 
 
-
-
-
-
-
-
 class Game:
     lives = 3
     ghosts = 4
+    points = 0
     # legend: 1: wall, 0: pill, 3: nothing, 2: player, 4,5,6,7: ghost
     cells = [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -623,7 +590,7 @@ class Game:
         [1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     ]
-    points = 0
+
 
 class Viewer:
     width = 0
@@ -632,6 +599,7 @@ class Viewer:
     font = None
     cell_width = 0
     cell_height = 0
+    max_idle = 0.5 # how many seconds idletime is allowed before computer makes automatic turn
     images = {}
     # --- player images ---
     images_east = []
@@ -646,8 +614,6 @@ class Viewer:
     images_pink = []
     images_red = []
 
-
-    # playergroup = None # pygame sprite Group only for players
 
     def __init__(
             self,
@@ -688,15 +654,13 @@ class Viewer:
         self.clock = pygame.time.Clock()
         self.fps = 60
         self.playtime = 0.0
-
+        self.idle = 0 # how many seconds user did not gave a command
 
         # ------ background images ------
         # self.backgroundfilenames = []  # every .jpg or .jpeg file in the folder 'data'
         # self.make_background()
         self.load_images()
-
-
-        self.setup()
+        self.setup() # this includes prepare_sprites()
         self.run()
 
     def load_images(self):
@@ -731,10 +695,6 @@ class Viewer:
         Viewer.images["pill"] = pic  # east
 
 
-
-
-
-
     def setup(self):
         """call this to restart a game"""
         # ------ game variables -----
@@ -749,7 +709,7 @@ class Viewer:
                 if char == 1:
                     pygame.draw.rect(self.background, (0,0,128), (x * Viewer.cell_width, y * Viewer.cell_height, Viewer.cell_width, Viewer.cell_height) )
         self.prepare_sprites()
-
+        self.idle = 0
 
 
     def prepare_sprites(self):
@@ -786,17 +746,6 @@ class Viewer:
                     Ghost(x=x, y=y, animation_index = 3, images=Viewer.images_pink)
 
 
-                    images_red = []
-
-
-        # Flytext.groups = self.allgroup, self.flytextgroup, self.flygroup
-        # self.ship1 = Ship(pos=pygame.math.Vector2(400, 200), color=(0,0,200))
-        # self.ship2 = Ship2(pos=pygame.math.Vector2(100, 100), color=(200,0,0))
-        # self.ship3 = Ship3(pos=pygame.math.Vector2(100, 400), color=(0,200,0))
-        # self.cannon1 = Cannon(pos=pygame.math.Vector2(300,400), color=(50,100,100))
-        # self.cannon2 = Cannon(pos=pygame.math.Vector2(600,500), color=(50,100,100))
-
-
     def check_player_ghost_collision(self):
         # ----- player vs. ghost:
         for player in self.playergroup:
@@ -825,17 +774,17 @@ class Viewer:
             print("ghost ", monster.number, "x", monster.x, "y", monster.y)
 
     def move_monsters(self):
-        print("---before first check ----")
+        #print("---before first check ----")
         #self.debug_positions()
         self.check_player_ghost_collision()
-        print("---move monsters ---")
+        #print("---move monsters ---")
         for monster in self.ghostgroup:
             monster.move_nesw()
         self.check_player_ghost_collision()
         #self.debug_positions()
 
     def move_player(self, dx, dy):
-        print("cell to go:", Game.cells[self.player1.y + dy][self.player1.x+dx])
+        #print("cell to go:", Game.cells[self.player1.y + dy][self.player1.x+dx])
         if Game.cells[self.player1.y + dy][self.player1.x+dx] in (0,2):
             self.player1.x += dx
             self.player1.y += dy
@@ -855,22 +804,16 @@ class Viewer:
 
     def run(self):
         """The mainloop"""
-        running = True
 
+        running = True
         # pygame.mouse.set_visible(False)
         click_oldleft, click_oldmiddle, click_oldright = False, False, False
-
-        # for b in range(-50,50, 5):
-        #    Bubble(pos=pygame.math.Vector2(200, 200), age=b/100, max_age=3)
-
-
-        # points = []
         # --------------------------- main loop --------------------------
-
         while running:
             milliseconds = self.clock.tick(self.fps)  #
             seconds = milliseconds / 1000
             self.playtime += seconds
+            self.idle += seconds
 
             # ---------- clear all --------------
             # pygame.display.set_caption(f"player 1: {self.player1.deaths}   vs. player 2: {self.player2.deaths}")     #str(nesw))
@@ -886,34 +829,29 @@ class Viewer:
                         running = False
                     if event.key == pygame.K_SPACE:
                         self.move_monsters() # player does nothing, but monsters move
+                        self.idle = 0
                     if event.key == pygame.K_UP:
                         # check if north of player is free
                         self.move_player(0, -1)
-
+                        self.idle = 0
                     if event.key == pygame.K_DOWN:
                         self.move_player(0,1)
-
+                        self.idle = 0
                     if event.key == pygame.K_LEFT:
                         self.move_player(-1,0)
-
+                        self.idle = 0
                     if event.key == pygame.K_RIGHT:
                         self.move_player(1,0)
-
-
+                        self.idle = 0
+            if self.idle > Viewer.max_idle:
+                # automatic turn because player did nothing for too long
+                self.move_monsters()
+                self.idle = 0
             # ------------ pressed keys ------
-            pressed_keys = pygame.key.get_pressed()
-
-
-
-
+            #pressed_keys = pygame.key.get_pressed()
             # ------ mouse handler ------
             #click_left, click_middle, click_right = pygame.mouse.get_pressed()
-
             #click_oldleft, click_oldmiddle, click_oldright = click_left, click_middle, click_right
-
-
-
-
             # ----------- collision detection ------------
             # ----- player vs pill ------
             for player in self.playergroup:
@@ -926,7 +864,7 @@ class Viewer:
                         a = random.randint(0,360)
                         w = random.randint(100,150)
                         m.from_polar((w,a ))
-                        Spark2(pos=pygame.math.Vector2(pill.pos.x, pill.pos.y),
+                        Spark(pos=pygame.math.Vector2(pill.pos.x, pill.pos.y),
                               move = m,
                               _layer=10,
                               color=(200,200,200),
@@ -977,6 +915,7 @@ class Viewer:
 
 def between(value, lower_limit=0, upper_limit=255):
     """makes sure a (color) value stays between a lower and a upper limit ( 0 and 255 )
+
     :param float value: the value that should stay between min and max
     :param float lower_limit:  the minimum value (lower limit)
     :param float upper_limit:  the maximum value (upper limit)
