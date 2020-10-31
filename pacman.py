@@ -316,7 +316,7 @@ class Flytext(VectorSprite):
             age=age,
             picture=picture,
         )
-        self._layer = 7  # order of sprite layers (before / behind other sprites)
+        self._layer = 27  # order of sprite layers (before / behind other sprites)
         # acceleration_factor  # if < 1, Text moves slower. if > 1, text moves faster.
 
     def create_image(self):
@@ -504,7 +504,7 @@ class Pill(VectorSprite):
     def _overwrite_parameters(self):
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width // 2,
                                        self.y * Viewer.cell_height + Viewer.cell_height // 2)
-        self._layer=1
+        self._layer=30
 
 class SuperPill(VectorSprite):
 
@@ -733,17 +733,23 @@ class Viewer:
                     Pill(x=x, y=y, picture=Viewer.images["pill"])
                 elif char == 2:
                     self.player1 = Player(x=x, y=x )
+                    self.player1.startx = x
+                    self.player1.starty = y
                 elif char == 3:
                     pass # nothing
                 # --- ghosts ---
                 elif char == 4:
-                    Ghost(x=x, y=y, animation_index = 0, images=Viewer.images_red)
+                    Ghost(x=x, y=y, animation_index = 0, images=Viewer.images_red,
+                          startx = x, starty = y)
                 elif char == 5:
-                    Ghost(x=x, y=y, animation_index = 1, images=Viewer.images_green)
+                    Ghost(x=x, y=y, animation_index = 1, images=Viewer.images_green,
+                          startx = x, starty = y)
                 elif char == 6:
-                    Ghost(x=x, y=y, animation_index = 2, images=Viewer.images_orange)
+                    Ghost(x=x, y=y, animation_index = 2, images=Viewer.images_orange,
+                          startx = x, starty = y)
                 elif char == 7:
-                    Ghost(x=x, y=y, animation_index = 3, images=Viewer.images_pink)
+                    Ghost(x=x, y=y, animation_index = 3, images=Viewer.images_pink,
+                          startx = x, starty = y)
 
 
     def check_player_ghost_collision(self):
@@ -754,16 +760,32 @@ class Viewer:
                 if player.x == ghost.x and player.y == ghost.y:
                     Game.lives -= 1
                     Flytext(pos=pygame.math.Vector2(player.pos.x, player.pos.y),
-                            text="you lost a life!",
+                            text="you lost a life! -- press Space key",
                             color=(200, 0, 0),
                             max_age=10,
                             fontsize=22)
+                    self.wait_for_space = True
+                    self.reset_monsters_and_player()
                     if Game.lives == 0:
                         Flytext(pos=pygame.math.Vector2(self.width // 2, self.height // 2),
-                                text="Game over",
+                                text="Game over  - press space to restart",
                                 color=(200, 0, 0),
                                 max_age=10,
-                                fontsize=64)
+                                fontsize=44)
+                        Game.lives = 3
+                        Game.points = 0
+                        self.reset_monsters_and_player()
+                        # --- kill old pills ----
+                        for p in self.pillgroup:
+                            p.kill()
+                        # create new pills
+                        for y, line in enumerate(Game.cells):
+                            for x, char in enumerate(line):
+                                if char == 0:
+                                    Pill(x=x, y=y, picture=Viewer.images["pill"])
+
+
+
                         # self.setup()
                     # break
                     return # only substract one life at max.
@@ -802,6 +824,78 @@ class Viewer:
             # move monsters
             self.move_monsters()
 
+    def play(self):
+        # ------- pressed and released key ------
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False # running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
+                    running = False
+                if event.key == pygame.K_SPACE:
+                    self.move_monsters()  # player does nothing, but monsters move
+                    self.idle = 0
+                if event.key == pygame.K_UP:
+                    # check if north of player is free
+                    self.move_player(0, -1)
+                    self.idle = 0
+                if event.key == pygame.K_DOWN:
+                    self.move_player(0, 1)
+                    self.idle = 0
+                if event.key == pygame.K_LEFT:
+                    self.move_player(-1, 0)
+                    self.idle = 0
+                if event.key == pygame.K_RIGHT:
+                    self.move_player(1, 0)
+                    self.idle = 0
+
+        if self.idle > Viewer.max_idle:
+            # automatic turn because player did nothing for too long
+            self.move_monsters()
+            self.idle = 0
+        # ------------ pressed keys ------
+        # pressed_keys = pygame.key.get_pressed()
+        # ------ mouse handler ------
+        # click_left, click_middle, click_right = pygame.mouse.get_pressed()
+        # click_oldleft, click_oldmiddle, click_oldright = click_left, click_middle, click_right
+        # ----------- collision detection ------------
+        # ----- player vs pill ------
+        for player in self.playergroup:
+            crashgroup = pygame.sprite.spritecollide(player, self.pillgroup, True, pygame.sprite.collide_rect)
+            # crashgroup_m = pygame.sprite.spritecollide(ship, crashgroup_r, True,  pygame.sprite.collide_mask)
+            for pill in crashgroup:
+                Game.points += 1
+                for _ in range(5):
+                    m = pygame.math.Vector2()
+                    a = random.randint(0, 360)
+                    w = random.randint(100, 150)
+                    m.from_polar((w, a))
+                    Spark(pos=pygame.math.Vector2(pill.pos.x, pill.pos.y),
+                          move=m,
+                          _layer=10,
+                          color=(200, 200, 200),
+                          max_age=0.8,
+                          angle=a,
+                          acceleration=0.95,
+                          )
+        # ---------------------------
+        return True # running = True
+
+
+    def reset_monsters_and_player(self):
+        """teleport monsters and players back at start position"""
+        self.player1.x = self.player1.startx
+        self.player1.y = self.player1.starty
+        self.player1.pos = pygame.math.Vector2(self.player1.x * Viewer.cell_width + Viewer.cell_width // 2,
+                                               self.player1.y * Viewer.cell_height + Viewer.cell_height // 2)
+        for m in self.ghostgroup:
+            m.x = m.startx
+            m.y = m.starty
+            m.pos = pygame.math.Vector2(m.x * Viewer.cell_width + Viewer.cell_width // 2,
+                                        m.y * Viewer.cell_height + Viewer.cell_height // 2)
+
+
+
     def run(self):
         """The mainloop"""
 
@@ -809,6 +903,13 @@ class Viewer:
         # pygame.mouse.set_visible(False)
         click_oldleft, click_oldmiddle, click_oldright = False, False, False
         # --------------------------- main loop --------------------------
+        self.wait_for_space = True
+        Flytext(text="press space to start",
+                pos=pygame.math.Vector2(Viewer.width//2, Viewer.height * 0.8),
+                fontsize=48,
+                color = (0,222,0),
+                max_age = 4,
+                )
         while running:
             milliseconds = self.clock.tick(self.fps)  #
             seconds = milliseconds / 1000
@@ -820,61 +921,24 @@ class Viewer:
             self.screen.blit(self.background, (0, 0))
 
             # -------- events ------
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                # ------- pressed and released key ------
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
-                        running = False
-                    if event.key == pygame.K_SPACE:
-                        self.move_monsters() # player does nothing, but monsters move
-                        self.idle = 0
-                    if event.key == pygame.K_UP:
-                        # check if north of player is free
-                        self.move_player(0, -1)
-                        self.idle = 0
-                    if event.key == pygame.K_DOWN:
-                        self.move_player(0,1)
-                        self.idle = 0
-                    if event.key == pygame.K_LEFT:
-                        self.move_player(-1,0)
-                        self.idle = 0
-                    if event.key == pygame.K_RIGHT:
-                        self.move_player(1,0)
-                        self.idle = 0
-            if self.idle > Viewer.max_idle:
-                # automatic turn because player did nothing for too long
-                self.move_monsters()
-                self.idle = 0
-            # ------------ pressed keys ------
-            #pressed_keys = pygame.key.get_pressed()
-            # ------ mouse handler ------
-            #click_left, click_middle, click_right = pygame.mouse.get_pressed()
-            #click_oldleft, click_oldmiddle, click_oldright = click_left, click_middle, click_right
-            # ----------- collision detection ------------
-            # ----- player vs pill ------
-            for player in self.playergroup:
-                crashgroup = pygame.sprite.spritecollide(player, self.pillgroup, True, pygame.sprite.collide_rect)
-                # crashgroup_m = pygame.sprite.spritecollide(ship, crashgroup_r, True,  pygame.sprite.collide_mask)
-                for pill in crashgroup:
-                    Game.points += 1
-                    for _ in range(5):
-                        m=pygame.math.Vector2()
-                        a = random.randint(0,360)
-                        w = random.randint(100,150)
-                        m.from_polar((w,a ))
-                        Spark(pos=pygame.math.Vector2(pill.pos.x, pill.pos.y),
-                              move = m,
-                              _layer=10,
-                              color=(200,200,200),
-                              max_age=0.8,
-                              angle=a,
-                              acceleration=0.95,
-                              )
+            #for event in pygame.event.get():
+            #    if event.type == pygame.QUIT:
+            #        running = False
+            #    if event.type == pygame.KEYDOWN:
+            #        if event.key == pygame.K_SPACE:
+            #            print("Space!!!!!!")
 
-            #self.check_player_ghost_collision()
-
+            if not self.wait_for_space:
+                running = self.play()
+            else:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                         running = False
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_SPACE:
+                            self.wait_for_space = False
+                            #print("yeahhhhhh")
+                            Flytext(text="let's go!")
             # ----------- writing on screen ----------
 
             # -------- write points ------------
