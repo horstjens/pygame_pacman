@@ -519,6 +519,8 @@ class Player(Monster):
         self.pos = pygame.math.Vector2(self.x * Viewer.cell_width + Viewer.cell_width//2, self.y * Viewer.cell_height+Viewer.cell_height//2)
         self._layer = 2
         self.animations_per_second = 5
+        self.xx = 0
+        self.yy = 0
 
 
 class Ghost(Monster):
@@ -599,7 +601,7 @@ class Viewer:
     font = None
     cell_width = 0
     cell_height = 0
-    max_idle = 0.5 # how many seconds idletime is allowed before computer makes automatic turn
+    max_idle = 0.22 # how many seconds idletime is allowed before computer makes automatic turn
     images = {}
     # --- player images ---
     images_east = []
@@ -732,7 +734,7 @@ class Viewer:
                 if char == 0:
                     Pill(x=x, y=y, picture=Viewer.images["pill"])
                 elif char == 2:
-                    self.player1 = Player(x=x, y=x )
+                    self.player1 = Player(x=x, y=x, xx=x, yy=y )
                     self.player1.startx = x
                     self.player1.starty = y
                 elif char == 3:
@@ -807,12 +809,20 @@ class Viewer:
 
     def move_player(self, dx, dy):
         #print("cell to go:", Game.cells[self.player1.y + dy][self.player1.x+dx])
-        if Game.cells[self.player1.y + dy][self.player1.x+dx] in (0,2):
-            self.player1.x += dx
-            self.player1.y += dy
-            self.player1.pos.x += Viewer.cell_width * dx
-            self.player1.pos.y += Viewer.cell_height * dy
-            # Player images
+        
+        self.player1.xx += dx // 4
+        self.player1.yy += dy // 4
+        self.player1.pos.x += Viewer.cell_width * dx // 4
+        self.player1.pos.y += Viewer.cell_height * dy // 4
+        
+        if self.player1.xx % 4 == 0:
+            self.player1.x = self.player1.xx
+        if self.player1.yy % 4 == 0:
+            self.player1.y = self.player1.yy
+            
+        
+        if Game.cells[self.player1.y][self.player1.x] in (0,2):
+        # Player images
             if dx == 0 and dy == -1:
                 Player.images = Viewer.images_north[:]
             elif dx == 0 and dy == 1:
@@ -832,25 +842,34 @@ class Viewer:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
                     running = False
-                if event.key == pygame.K_SPACE:
-                    self.move_monsters()  # player does nothing, but monsters move
-                    self.idle = 0
-                if event.key == pygame.K_UP:
-                    # check if north of player is free
-                    self.move_player(0, -1)
-                    self.idle = 0
-                if event.key == pygame.K_DOWN:
-                    self.move_player(0, 1)
-                    self.idle = 0
-                if event.key == pygame.K_LEFT:
-                    self.move_player(-1, 0)
-                    self.idle = 0
-                if event.key == pygame.K_RIGHT:
-                    self.move_player(1, 0)
-                    self.idle = 0
+                #if event.key == pygame.K_SPACE:
+                #    self.move_monsters()  # player does nothing, but monsters move
+                #    self.idle = 0
+                #if event.key == pygame.K_UP:
+                #    # check if north of player is free
+                #    self.move_player(0, -1)
+                #    self.idle = 0
+                #if event.key == pygame.K_DOWN:
+                #    self.move_player(0, 1)
+                #    self.idle = 0
+                #if event.key == pygame.K_LEFT:
+                #    self.move_player(-1, 0)
+                #    self.idle = 0
+                #if event.key == pygame.K_RIGHT:
+                #    self.move_player(1, 0)
+                #    self.idle = 0
 
         if self.idle > Viewer.max_idle:
             # automatic turn because player did nothing for too long
+            pressed_keys = pygame.key.get_pressed()
+            if pressed_keys[pygame.K_UP]:
+                self.move_player(0, -1)
+            if pressed_keys[pygame.K_DOWN]:
+                self.move_player(0, 1)
+            if pressed_keys[pygame.K_LEFT]:
+                self.move_player(-1, 0)
+            if pressed_keys[pygame.K_RIGHT]:
+                self.move_player(1, 0)
             self.move_monsters()
             self.idle = 0
         # ------------ pressed keys ------
