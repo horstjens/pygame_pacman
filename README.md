@@ -1,2 +1,2 @@
 # pygame_pacman
-pacman cline using python3 and pygame
+pacman clone using python3 and pygame
